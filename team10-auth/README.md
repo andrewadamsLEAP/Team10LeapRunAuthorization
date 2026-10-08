@@ -1,3 +1,52 @@
+# Team10 Auth API
+
+The API authenticates clients from the PostgreSQL `clients` table and issues
+one-hour JWT access tokens.
+
+## Run locally
+
+Add these entries to `.env` in the `team10-auth` directory, using your
+database's connection details. Set `JWT_SECRET` to a unique random value of at
+least 32 characters. Keep `.env` private and never commit real credentials.
+
+```dotenv
+JWT_SECRET=your-unique-random-secret-at-least-32-characters
+DATABASE_HOST=localhost
+DATABASE_PORT=5432
+DATABASE_USER=your_database_user
+DATABASE_PASSWORD=your_database_password
+DATABASE_NAME=your_database_name
+DATABASE_SSL=false
+```
+
+The app loads `.env` on startup. Generate the JWT secret with a cryptographically
+secure random generator; do not use the example value above. Set
+`DATABASE_SSL=true` if your PostgreSQL host requires TLS. From the `team10-auth`
+directory, start the server with `npm run start:dev`.
+
+The `clients.password` column must contain bcrypt hashes. If it currently
+contains plaintext passwords or another hash format, migrate/reset those
+passwords before enabling this sign-in flow; the API intentionally rejects
+non-bcrypt values. In production, use a secret manager for credentials.
+
+## Endpoints
+
+- `POST /auth/signup` accepts `email`, `username`, `password`, and optional
+  `first_name` / `last_name`. It stores a bcrypt hash, initializes
+  `cash_amount` to zero, and returns the new account without its password.
+  The database must generate `client_id` and enforce unique email/username
+  constraints.
+- `POST /auth/login` with JSON `{ "username": "client-name", "password": "..." }`
+  (or an `email` field instead of `username`) checks the `clients` table and
+  returns an `access_token`.
+- `GET /auth/me` with `Authorization: Bearer <access_token>` returns the
+  authenticated account.
+- `POST /auth/logout` with the same bearer token revokes it; subsequent
+  protected requests using that token return `401`.
+
+Token revocations are held in memory, so they are lost when the server restarts
+and are not shared across multiple server instances. Use a shared store for
+production deployments.
 <p align="center">
   <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
 </p>

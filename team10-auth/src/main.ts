@@ -1,5 +1,13 @@
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module.js';
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+const envFilePath = resolve(process.cwd(), '.env');
+if (existsSync(envFilePath)) {
+  process.loadEnvFile(envFilePath);
+}
+
+const { AppModule } = await import('./app.module.js');
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
