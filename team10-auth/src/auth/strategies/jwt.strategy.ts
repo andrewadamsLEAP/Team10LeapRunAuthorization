@@ -18,8 +18,21 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: { sub: string; username: string; jti: string; exp: number }) {
-    if (!payload.jti || this.authService.isTokenRevoked(payload.jti)) {
+  async validate(payload: {
+    sub: string;
+    username: string;
+    jti: string;
+    exp: number;
+    sid: string;
+    token_use: string;
+  }) {
+    if (
+      payload.token_use !== 'access' ||
+      !payload.jti ||
+      !payload.sid ||
+      this.authService.isTokenRevoked(payload.jti) ||
+      this.authService.isSessionRevoked(payload.sid)
+    ) {
       throw new UnauthorizedException('This access token is no longer valid.');
     }
     return {
@@ -27,6 +40,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       username: payload.username,
       tokenId: payload.jti,
       tokenExpiresAt: payload.exp,
+      sessionId: payload.sid,
     };
   }
 }
