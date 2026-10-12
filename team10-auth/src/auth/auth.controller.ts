@@ -83,6 +83,22 @@ export class AuthController {
     return this.authService.signIn(identifier, loginDto.password);
   }
 
+  @Post('employee/login')
+  async employeeLogin(
+    @Body() loginDto: { username?: unknown; email?: unknown; password?: unknown },
+  ) {
+    const identifier = loginDto?.username ?? loginDto?.email;
+    if (
+      typeof identifier !== 'string' ||
+      typeof loginDto.password !== 'string' ||
+      !identifier ||
+      !loginDto.password
+    ) {
+      throw new BadRequestException('username (or email) and password are required.');
+    }
+    return this.authService.signInEmployee(identifier, loginDto.password);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Post('logout')
   logout(@CurrentUser() user: AuthenticatedUser) {
