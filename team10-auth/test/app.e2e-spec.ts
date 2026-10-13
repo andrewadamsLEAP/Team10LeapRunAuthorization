@@ -84,29 +84,73 @@ describe('AppController (e2e)', () => {
     expect(capturedSignupValues?.[2]).not.toBe('a-very-strong-test-password');
   });
 
-  it('signs in, protects account access, and revokes the token on logout', async () => {
+  it('refreshes tokens, rejects refresh replay, and revokes the session on logout', async () => {
     const loginResponse = await request(app.getHttpServer())
       .post('/auth/login')
       .send({ username: 'test-user', password: 'test-password' })
       .expect(201);
-    const accessToken = loginResponse.body.access_token as string;
+    const originalTokens = loginResponse.body as {
+      access_token: string;
+      refresh_token: string;
+      expires_in: number;
+      refresh_expires_in: number;
+    };
+    expect(originalTokens.expires_in).toBe(900);
+    expect(originalTokens.refresh_expires_in).toBe(900);
+
+    const duplicateLogin = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ username: 'test-user', password: 'test-password' })
+      .expect(409);
+    expect(duplicateLogin.body.message).toContain('already logged in');
+    expect(duplicateLogin.body).not.toHaveProperty('access_token');
+    expect(duplicateLogin.body).not.toHaveProperty('refresh_token');
 
     await request(app.getHttpServer())
       .get('/auth/me')
-      .set('Authorization', `Bearer ${accessToken}`)
+      .set('Authorization', `Bearer ${originalTokens.access_token}`)
       .expect(200)
       .expect({ userId: '1', username: 'test-user' });
 
+    const refreshed = await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .send({ refresh_token: originalTokens.refresh_token })
+      .expect(201);
+    const currentTokens = refreshed.body as {
+      access_token: string;
+      refresh_token: string;
+    };
+    expect(currentTokens.access_token).not.toBe(originalTokens.access_token);
+    expect(currentTokens.refresh_token).not.toBe(originalTokens.refresh_token);
+
+    await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .send({ refresh_token: originalTokens.refresh_token })
+      .expect(401);
+
     await request(app.getHttpServer())
       .post('/auth/logout')
-      .set('Authorization', `Bearer ${accessToken}`)
+      .set('Authorization', `Bearer ${currentTokens.access_token}`)
+      .send({ refresh_token: currentTokens.refresh_token })
       .expect(201)
       .expect({ message: 'Successfully signed out.' });
 
     await request(app.getHttpServer())
       .get('/auth/me')
-      .set('Authorization', `Bearer ${accessToken}`)
+      .set('Authorization', `Bearer ${currentTokens.access_token}`)
       .expect(401);
+
+    await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .send({ refresh_token: currentTokens.refresh_token })
+      .expect(401);
+
+    const loginAfterLogout = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ username: 'test-user', password: 'test-password' })
+      .expect(201);
+    expect(loginAfterLogout.body.access_token).toBeTruthy();
+    expect(loginAfterLogout.body.refresh_token).toBeTruthy();
   });
 
   afterEach(async () => {

@@ -17,7 +17,7 @@ if (!jwtSecret || jwtSecret.length < 32) {
     DatabaseModule,
     JwtModule.register({
       secret: jwtSecret,
-      signOptions: { expiresIn: '1h' },
+      signOptions: { expiresIn: '15m' },
     }),
   ],
   providers: [AuthService, JwtStrategy],

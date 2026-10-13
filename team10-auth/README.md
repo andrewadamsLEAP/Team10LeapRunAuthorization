@@ -1,7 +1,11 @@
 # Team10 Auth API
 
 The API authenticates clients from the PostgreSQL `clients` table and issues
-one-hour JWT access tokens.
+15-minute JWT access and refresh tokens. It permits one active session per
+account in this server process: a second login returns HTTP `409 Conflict`
+without issuing tokens. The client can display the response message to the user.
+Refreshing the existing session is still supported when the user chooses to
+extend it.
 
 ## Run locally
 
@@ -38,15 +42,24 @@ non-bcrypt values. In production, use a secret manager for credentials.
   constraints.
 - `POST /auth/login` with JSON `{ "username": "client-name", "password": "..." }`
   (or an `email` field instead of `username`) checks the `clients` table and
-  returns an `access_token`.
+  returns `access_token` and `refresh_token` (both expire after 15 minutes).
+  If that account already has a live session, it returns `409` and does not
+  replace or rotate either token.
+- `POST /auth/refresh` with JSON `{ "refresh_token": "..." }` rotates both
+  tokens within the existing session and starts another 15-minute period. The
+  old refresh token cannot be reused. Call this only when the user chooses to
+  extend, before the current refresh token expires.
 - `GET /auth/me` with `Authorization: Bearer <access_token>` returns the
   authenticated account.
-- `POST /auth/logout` with the same bearer token revokes it; subsequent
-  protected requests using that token return `401`.
+- `POST /auth/logout` with the access bearer token and JSON
+  `{ "refresh_token": "..." }` revokes the whole session.
 
-Token revocations are held in memory, so they are lost when the server restarts
-and are not shared across multiple server instances. Use a shared store for
-production deployments.
+Active sessions, refresh-token replay detection, and logout revocations are
+held in memory, so they are lost when the server restarts and are not shared
+across multiple server instances. Use a shared store (such as Redis or a
+database table) for production deployments. This repository contains only the
+API; the frontend must show the already-logged-in message on `409` and call
+`/auth/refresh` only when the user selects “Extend session.”
 <p align="center">
   <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
 </p>
