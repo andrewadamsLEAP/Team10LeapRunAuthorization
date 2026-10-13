@@ -241,18 +241,11 @@ export class AuthService {
     }
 
     return {
-
-      access_token: accessToken,
+     access_token: accessToken,
       refresh_token: refreshToken,
-
-      access_token: await this.jwtService.signAsync({
-        sub: clientId,
-        username: client.username,
-        jti: tokenId,
-        actorType: 'client',
-      }),
       token_type: 'Bearer',
       expires_in: ACCESS_TOKEN_LIFETIME_SECONDS,
+      refresh_expires_in: REFRESH_TOKEN_LIFETIME_SECONDS,
     };
   }
 
