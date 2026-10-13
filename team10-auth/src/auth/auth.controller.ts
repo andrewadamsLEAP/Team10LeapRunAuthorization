@@ -84,12 +84,29 @@ export class AuthController {
     return this.authService.signIn(identifier, loginDto.password);
   }
 
+
   @Post('refresh')
   async refresh(@Body() refreshDto: { refresh_token?: unknown }) {
     if (typeof refreshDto?.refresh_token !== 'string' || !refreshDto.refresh_token) {
       throw new BadRequestException('refresh_token is required.');
     }
     return this.authService.refreshSession(refreshDto.refresh_token);
+  }
+  @Post('employee/login')
+  async employeeLogin(
+    @Body() loginDto: { username?: unknown; email?: unknown; password?: unknown },
+  ) {
+    const identifier = loginDto?.username ?? loginDto?.email;
+    if (
+      typeof identifier !== 'string' ||
+      typeof loginDto.password !== 'string' ||
+      !identifier ||
+      !loginDto.password
+    ) {
+      throw new BadRequestException('username (or email) and password are required.');
+    }
+    return this.authService.signInEmployee(identifier, loginDto.password);
+
   }
 
   @UseGuards(JwtAuthGuard)

@@ -5,8 +5,9 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { randomUUID } from 'node:crypto';
+
 import bcrypt from 'bcrypt';
+import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { Pool } from 'pg';
 import { DATABASE_POOL } from '../database/database.module.js';
 
@@ -28,6 +29,14 @@ type ClientAccount = {
   username: string;
   email: string;
   password: string;
+};
+
+type EmployeeAccount = {
+  employee_id: string | number;
+  username: string;
+  email: string;
+  password: string;
+  role: string;
 };
 
 export type SignupInput = {
@@ -232,8 +241,53 @@ export class AuthService {
     }
 
     return {
+
       access_token: accessToken,
       refresh_token: refreshToken,
+
+      access_token: await this.jwtService.signAsync({
+        sub: clientId,
+        username: client.username,
+        jti: tokenId,
+        actorType: 'client',
+      }),
+      token_type: 'Bearer',
+      expires_in: ACCESS_TOKEN_LIFETIME_SECONDS,
+    };
+  }
+
+  async signInEmployee(identifier: string, password: string) {
+    const result = await this.database.query<EmployeeAccount>(
+      `SELECT employee_id, username, email, password, role
+       FROM employees
+       WHERE username = $1 OR email = $1
+       LIMIT 1`,
+      [identifier],
+    );
+    const employee = result.rows[0];
+
+    if (
+      !employee ||
+      typeof employee.password !== 'string' ||
+      !/^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(employee.password)
+    ) {
+      throw new UnauthorizedException('Invalid username or password.');
+    }
+    const passwordMatches = await bcrypt.compare(password, employee.password);
+    if (!passwordMatches) {
+      throw new UnauthorizedException('Invalid username or password.');
+    }
+
+    const tokenId = randomUUID();
+    const employeeId = String(employee.employee_id);
+    return {
+      access_token: await this.jwtService.signAsync({
+        sub: employeeId,
+        username: employee.username,
+        role: employee.role,
+        actorType: 'employee',
+        jti: tokenId,
+      }),
       token_type: 'Bearer',
       expires_in: ACCESS_TOKEN_LIFETIME_SECONDS,
       refresh_expires_in: REFRESH_TOKEN_LIFETIME_SECONDS,
