@@ -54,6 +54,14 @@ export type SignupInput = {
   lastName?: string;
 };
 
+export type CreateReporterInput = {
+  email: string;
+  username: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+};
+
 export type PublicClientAccount = {
   client_id: string | number;
   email: string;
@@ -106,6 +114,36 @@ export class AuthService {
     }
   }
 
+  async createReporter(input: CreateReporterInput) {
+    const passwordHash = await bcrypt.hash(input.password, 12);
+    try {
+      const result = await this.database.query(
+        `INSERT INTO employees
+           (email, username, password, first_name, last_name, role)
+         VALUES ($1, $2, $3, $4, $5, 'REPORTER')
+         RETURNING employee_id, email, username, first_name, last_name, role`,
+        [
+          input.email,
+          input.username,
+          passwordHash,
+          input.firstName,
+          input.lastName,
+        ],
+      );
+      return result.rows[0];
+    } catch (error) {
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        error.code === '23505'
+      ) {
+        throw new ConflictException('That employee email or username already exists.');
+      }
+      throw error;
+    }
+  }
+
   async signIn(identifier: string, password: string) {
     const result = await this.database.query<ClientAccount>(
       `SELECT client_id, username, email, password
@@ -145,10 +183,12 @@ export class AuthService {
       sessionId,
       expiresAt: now + REFRESH_TOKEN_LIFETIME_SECONDS,
       actorType: 'client',
+      role: 'CLIENT',
     });
     try {
       return await this.createTokenPair(userId, client.username, sessionId, {
         actorType: 'client',
+        role: 'CLIENT',
       });
     } catch (error) {
       if (this.activeSessions.get(userId)?.sessionId === sessionId) {
@@ -296,10 +336,11 @@ export class AuthService {
     }
 
     const employeeId = String(employee.employee_id);
-    const role = employee.role.trim().toUpperCase();
-    if (role !== 'ADMIN' && role !== 'REPORTER') {
+    const databaseRole = employee.role.trim().toUpperCase();
+    if (databaseRole !== 'ADMIN' && databaseRole !== 'REPORTER') {
       throw new UnauthorizedException('Invalid employee role.');
     }
+    const role = databaseRole === 'ADMIN' ? 'EMPLOYEE_ADMIN' : 'EMPLOYEE_REPORTER';
 
     const now = Math.floor(Date.now() / 1000);
     const activeSession = this.activeSessions.get(employeeId);

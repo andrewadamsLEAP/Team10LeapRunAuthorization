@@ -6,7 +6,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import { AuthService, SignupInput } from './auth.service.js';
+import { AuthService, CreateReporterInput, SignupInput } from './auth.service.js';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 import { CurrentUser } from './decorators/current-user.decorator.js';
 import { Roles } from './decorators/roles.decorator.js';
@@ -70,6 +70,62 @@ export class AuthController {
       lastName: typeof lastName === 'string' ? lastName.trim() || undefined : undefined,
     };
     return this.authService.signUp(input);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('EMPLOYEE_ADMIN')
+  @Post('employees/reporter')
+  async createReporter(
+    @Body()
+    reporterDto: {
+      email?: unknown;
+      username?: unknown;
+      password?: unknown;
+      first_name?: unknown;
+      last_name?: unknown;
+    },
+  ) {
+    const email = typeof reporterDto?.email === 'string'
+      ? reporterDto.email.trim().toLowerCase()
+      : '';
+    const username = typeof reporterDto?.username === 'string'
+      ? reporterDto.username.trim()
+      : '';
+    const password = reporterDto?.password;
+    const firstName = typeof reporterDto?.first_name === 'string'
+      ? reporterDto.first_name.trim()
+      : '';
+    const lastName = typeof reporterDto?.last_name === 'string'
+      ? reporterDto.last_name.trim()
+      : '';
+
+    if (
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
+      email.length > 254 ||
+      username.length < 3 ||
+      username.length > 50 ||
+      !/^[a-zA-Z0-9_.-]+$/.test(username) ||
+      typeof password !== 'string' ||
+      password.length < 12 ||
+      Buffer.byteLength(password, 'utf8') > 72 ||
+      !firstName ||
+      firstName.length > 255 ||
+      !lastName ||
+      lastName.length > 255
+    ) {
+      throw new BadRequestException(
+        'Provide valid employee details and a password of 12-72 characters.',
+      );
+    }
+
+    const input: CreateReporterInput = {
+      email,
+      username,
+      password,
+      firstName,
+      lastName,
+    };
+    return this.authService.createReporter(input);
   }
 
   @Post('login')
@@ -149,14 +205,14 @@ export class AuthController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
+  @Roles('EMPLOYEE_ADMIN')
   @Get('employee/admin/check')
   adminCheck(@CurrentUser() user: AuthenticatedUser) {
     return { authorized: true, role: user.role, username: user.username };
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('REPORTER')
+  @Roles('EMPLOYEE_REPORTER')
   @Get('employee/reporter/check')
   reporterCheck(@CurrentUser() user: AuthenticatedUser) {
     return { authorized: true, role: user.role, username: user.username };
