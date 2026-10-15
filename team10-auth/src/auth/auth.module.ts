@@ -4,6 +4,7 @@ import { PassportModule } from '@nestjs/passport';
 import { AuthService } from './auth.service.js';
 import { AuthController } from './auth.controller.js';
 import { JwtStrategy } from './strategies/jwt.strategy.js';
+import { RolesGuard } from './guards/roles.guard.js';
 import { DatabaseModule } from '../database/database.module.js';
 
 const jwtSecret = process.env.JWT_SECRET;
@@ -20,7 +21,7 @@ if (!jwtSecret || jwtSecret.length < 32) {
       signOptions: { expiresIn: '15m' },
     }),
   ],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, JwtStrategy, RolesGuard],
   controllers: [AuthController],
   exports: [AuthService, JwtModule],
 })

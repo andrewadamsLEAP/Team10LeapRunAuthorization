@@ -39,6 +39,13 @@ type EmployeeAccount = {
   role: string;
 };
 
+type SessionState = {
+  sessionId: string;
+  expiresAt: number;
+  actorType: 'client' | 'employee';
+  role?: string;
+};
+
 export type SignupInput = {
   email: string;
   username: string;
@@ -61,7 +68,7 @@ export class AuthService {
   private readonly revokedSessions = new Map<string, number>();
   private readonly activeSessions = new Map<
     string,
-    { sessionId: string; expiresAt: number }
+    SessionState
   >();
 
   constructor(
@@ -97,6 +104,22 @@ export class AuthService {
       }
       throw error;
     }
+  }
+
+  async signInUnified(identifier: string, password: string) {
+    const employee = await this.database.query<{ employee_id: string | number }>(
+      `SELECT employee_id
+       FROM employees
+       WHERE username = $1 OR email = $1
+       LIMIT 1`,
+      [identifier],
+    );
+
+    if (employee.rows.length > 0) {
+      return this.signInEmployee(identifier, password);
+    }
+
+    return this.signIn(identifier, password);
   }
 
   async signIn(identifier: string, password: string) {
@@ -137,9 +160,12 @@ export class AuthService {
     this.activeSessions.set(userId, {
       sessionId,
       expiresAt: now + REFRESH_TOKEN_LIFETIME_SECONDS,
+      actorType: 'client',
     });
     try {
-      return await this.createTokenPair(userId, client.username, sessionId);
+      return await this.createTokenPair(userId, client.username, sessionId, {
+        actorType: 'client',
+      });
     } catch (error) {
       if (this.activeSessions.get(userId)?.sessionId === sessionId) {
         this.activeSessions.delete(userId);
@@ -171,7 +197,14 @@ export class AuthService {
     }
 
     this.revokeToken(payload.jti, payload.exp);
-    return this.createTokenPair(payload.sub, payload.username, payload.sid);
+    const session = this.activeSessions.get(payload.sub);
+    if (!session) {
+      throw new UnauthorizedException('Refresh token session is no longer active.');
+    }
+    return this.createTokenPair(payload.sub, payload.username, payload.sid, {
+      actorType: session.actorType,
+      role: session.role,
+    });
   }
 
   async signOut(
@@ -210,7 +243,12 @@ export class AuthService {
     this.activeSessions.delete(expectedUserId);
   }
 
-  private async createTokenPair(userId: string, username: string, sessionId: string) {
+  private async createTokenPair(
+    userId: string,
+    username: string,
+    sessionId: string,
+    claims: { actorType: 'client' | 'employee'; role?: string },
+  ) {
     const accessToken = await this.jwtService.signAsync(
       {
         sub: userId,
@@ -218,6 +256,7 @@ export class AuthService {
         jti: randomUUID(),
         sid: sessionId,
         token_use: 'access',
+        ...claims,
       },
       { expiresIn: TOKEN_LIFETIME },
     );
@@ -228,6 +267,7 @@ export class AuthService {
         jti: randomUUID(),
         sid: sessionId,
         token_use: 'refresh',
+        ...claims,
       },
       { expiresIn: TOKEN_LIFETIME },
     );
@@ -271,20 +311,39 @@ export class AuthService {
       throw new UnauthorizedException('Invalid username or password.');
     }
 
-    const tokenId = randomUUID();
     const employeeId = String(employee.employee_id);
-    return {
-      access_token: await this.jwtService.signAsync({
-        sub: employeeId,
-        username: employee.username,
-        role: employee.role,
+    const role = employee.role.trim().toUpperCase();
+    if (role !== 'ADMIN' && role !== 'REPORTER') {
+      throw new UnauthorizedException('Invalid employee role.');
+    }
+
+    const now = Math.floor(Date.now() / 1000);
+    const activeSession = this.activeSessions.get(employeeId);
+    if (activeSession && activeSession.expiresAt > now) {
+      throw new ConflictException(
+        'This account is already logged in. Log out or wait for the session to expire before signing in again.',
+      );
+    }
+    if (activeSession) this.activeSessions.delete(employeeId);
+
+    const sessionId = randomUUID();
+    this.activeSessions.set(employeeId, {
+      sessionId,
+      expiresAt: now + REFRESH_TOKEN_LIFETIME_SECONDS,
+      actorType: 'employee',
+      role,
+    });
+    try {
+      return await this.createTokenPair(employeeId, employee.username, sessionId, {
         actorType: 'employee',
-        jti: tokenId,
-      }),
-      token_type: 'Bearer',
-      expires_in: ACCESS_TOKEN_LIFETIME_SECONDS,
-      refresh_expires_in: REFRESH_TOKEN_LIFETIME_SECONDS,
-    };
+        role,
+      });
+    } catch (error) {
+      if (this.activeSessions.get(employeeId)?.sessionId === sessionId) {
+        this.activeSessions.delete(employeeId);
+      }
+      throw error;
+    }
   }
 
   private revokeToken(tokenId: string, tokenExpiresAt: number) {

@@ -25,6 +25,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     exp: number;
     sid: string;
     token_use: string;
+    actorType?: string;
+    role?: string;
   }) {
     if (
       payload.token_use !== 'access' ||
@@ -38,6 +40,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     return {
       userId: payload.sub,
       username: payload.username,
+      actorType: payload.actorType,
+      role: payload.role,
       tokenId: payload.jti,
       tokenExpiresAt: payload.exp,
       sessionId: payload.sid,
