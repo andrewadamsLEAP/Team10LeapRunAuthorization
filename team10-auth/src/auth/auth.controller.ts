@@ -90,7 +90,7 @@ export class AuthController {
     ) {
       throw new BadRequestException('username (or email) and password are required.');
     }
-    return this.authService.signInUnified(identifier, loginDto.password);
+    return this.authService.signIn(identifier, loginDto.password);
   }
 
 

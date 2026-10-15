@@ -106,22 +106,6 @@ export class AuthService {
     }
   }
 
-  async signInUnified(identifier: string, password: string) {
-    const employee = await this.database.query<{ employee_id: string | number }>(
-      `SELECT employee_id
-       FROM employees
-       WHERE username = $1 OR email = $1
-       LIMIT 1`,
-      [identifier],
-    );
-
-    if (employee.rows.length > 0) {
-      return this.signInEmployee(identifier, password);
-    }
-
-    return this.signIn(identifier, password);
-  }
-
   async signIn(identifier: string, password: string) {
     const result = await this.database.query<ClientAccount>(
       `SELECT client_id, username, email, password
