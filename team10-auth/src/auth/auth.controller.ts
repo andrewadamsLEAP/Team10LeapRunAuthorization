@@ -9,6 +9,8 @@ import {
 import { AuthService, SignupInput } from './auth.service.js';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 import { CurrentUser } from './decorators/current-user.decorator.js';
+import { Roles } from './decorators/roles.decorator.js';
+import { RolesGuard } from './guards/roles.guard.js';
 
 type AuthenticatedUser = {
   userId: string;
@@ -16,6 +18,8 @@ type AuthenticatedUser = {
   tokenId: string;
   tokenExpiresAt: number;
   sessionId: string;
+  actorType?: string;
+  role?: string;
 };
 
 @Controller('auth')
@@ -70,7 +74,12 @@ export class AuthController {
 
   @Post('login')
   async login(
-    @Body() loginDto: { username?: unknown; email?: unknown; password?: unknown },
+    @Body()
+    loginDto: {
+      username?: unknown;
+      email?: unknown;
+      password?: unknown;
+    },
   ) {
     const identifier = loginDto?.username ?? loginDto?.email;
     if (
@@ -131,6 +140,25 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Get('me')
   getCurrentUser(@CurrentUser() user: AuthenticatedUser) {
-    return { userId: user.userId, username: user.username };
+    return {
+      userId: user.userId,
+      username: user.username,
+      actorType: user.actorType,
+      role: user.role,
+    };
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @Get('employee/admin/check')
+  adminCheck(@CurrentUser() user: AuthenticatedUser) {
+    return { authorized: true, role: user.role, username: user.username };
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('REPORTER')
+  @Get('employee/reporter/check')
+  reporterCheck(@CurrentUser() user: AuthenticatedUser) {
+    return { authorized: true, role: user.role, username: user.username };
   }
 }
