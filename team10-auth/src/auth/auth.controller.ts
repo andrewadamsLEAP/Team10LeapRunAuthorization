@@ -101,20 +101,20 @@ export class AuthController {
 
     if (
       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
-      email.length > 254 ||
+      email.length > 255 ||
       username.length < 3 ||
-      username.length > 50 ||
+      username.length > 100 ||
       !/^[a-zA-Z0-9_.-]+$/.test(username) ||
       typeof password !== 'string' ||
-      password.length < 12 ||
-      Buffer.byteLength(password, 'utf8') > 72 ||
+      password.length < 8 ||
+      password.length > 30 ||
       !firstName ||
-      firstName.length > 255 ||
+      firstName.length > 100 ||
       !lastName ||
-      lastName.length > 255
+      lastName.length > 100
     ) {
       throw new BadRequestException(
-        'Provide valid employee details and a password of 12-72 characters.',
+        'Provide valid employee details and a password of 8-30 characters.',
       );
     }
 
