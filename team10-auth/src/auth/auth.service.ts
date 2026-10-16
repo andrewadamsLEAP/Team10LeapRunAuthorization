@@ -11,9 +11,9 @@ import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { Pool } from 'pg';
 import { DATABASE_POOL } from '../database/database.module.js';
 
-const ACCESS_TOKEN_LIFETIME_SECONDS = 1 * 60;
-const REFRESH_TOKEN_LIFETIME_SECONDS = 1 * 60;
-const TOKEN_LIFETIME = '1m';
+const ACCESS_TOKEN_LIFETIME_SECONDS = 30 * 60;
+const REFRESH_TOKEN_LIFETIME_SECONDS = 30 * 60;
+const TOKEN_LIFETIME = '30m';
 
 type RefreshTokenPayload = {
   sub: string;
