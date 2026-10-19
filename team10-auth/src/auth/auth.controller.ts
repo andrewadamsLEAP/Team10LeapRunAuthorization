@@ -6,6 +6,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBody } from '@nestjs/swagger';
 import { AuthService, CreateReporterInput, SignupInput } from './auth.service.js';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 import { CurrentUser } from './decorators/current-user.decorator.js';
@@ -27,6 +28,19 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('signup')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['email', 'username', 'password'],
+      properties: {
+        email: { type: 'string', format: 'email' },
+        username: { type: 'string' },
+        password: { type: 'string', format: 'password' },
+        first_name: { type: 'string' },
+        last_name: { type: 'string' },
+      },
+    },
+  })
   async signup(
     @Body()
     signupDto: {
@@ -140,6 +154,17 @@ export class AuthController {
   }
 
   @Post('login')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['password'],
+      properties: {
+        username: { type: 'string' },
+        email: { type: 'string', format: 'email' },
+        password: { type: 'string', format: 'password' },
+      },
+    },
+  })
   async login(
     @Body()
     loginDto: {
@@ -162,6 +187,15 @@ export class AuthController {
 
 
   @Post('refresh')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['refresh_token'],
+      properties: {
+        refresh_token: { type: 'string' },
+      },
+    },
+  })
   async refresh(@Body() refreshDto: { refresh_token?: unknown }) {
     if (typeof refreshDto?.refresh_token !== 'string' || !refreshDto.refresh_token) {
       throw new BadRequestException('refresh_token is required.');
@@ -169,6 +203,17 @@ export class AuthController {
     return this.authService.refreshSession(refreshDto.refresh_token);
   }
   @Post('employee/login')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['password'],
+      properties: {
+        username: { type: 'string' },
+        email: { type: 'string', format: 'email' },
+        password: { type: 'string', format: 'password' },
+      },
+    },
+  })
   async employeeLogin(
     @Body() loginDto: { username?: unknown; email?: unknown; password?: unknown },
   ) {
@@ -187,6 +232,15 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Post('logout')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['refresh_token'],
+      properties: {
+        refresh_token: { type: 'string' },
+      },
+    },
+  })
   async logout(
     @CurrentUser() user: AuthenticatedUser,
     @Body() logoutDto: { refresh_token?: unknown },
