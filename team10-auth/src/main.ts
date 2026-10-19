@@ -14,7 +14,6 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   // CORS setup that only allows Angular port.
-  // TODO: probably need to change from localhost when doing AWS (?)
   app.enableCors({
     origin: [process.env.FE_PORT],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
