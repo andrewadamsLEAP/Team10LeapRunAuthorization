@@ -39,23 +39,34 @@ export class AuthController {
     const firstName = signupDto?.first_name;
     const lastName = signupDto?.last_name;
 
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
+      throw new BadRequestException('Invalid email. Provide a valid email address.');
+    }
     if (
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
-      email.length > 254 ||
       username.length < 3 ||
       username.length > 50 ||
-      !/^[a-zA-Z0-9_.-]+$/.test(username) ||
+      !/^[a-zA-Z0-9_.-]+$/.test(username)
+    ) {
+      throw new BadRequestException(
+        'Invalid username. Use 3–50 characters: letters, numbers, underscores, periods, or hyphens.',
+      );
+    }
+    if (
       typeof password !== 'string' ||
       password.length < 12 ||
-      Buffer.byteLength(password, 'utf8') > 72 ||
+      Buffer.byteLength(password, 'utf8') > 72
+    ) {
+      throw new BadRequestException(
+        'Invalid password. It must be at least 12 characters and no more than 72 UTF-8 bytes.',
+      );
+    }
+    if (
       (firstName !== undefined && typeof firstName !== 'string') ||
       (lastName !== undefined && typeof lastName !== 'string') ||
       (typeof firstName === 'string' && firstName.length > 100) ||
       (typeof lastName === 'string' && lastName.length > 100)
     ) {
-      throw new BadRequestException(
-        'Provide a valid email, a 3–50 character username, and a password of 12–72 characters.',
-      );
+      throw new BadRequestException('first_name and last_name must be strings of at most 100 characters.');
     }
 
     const input: SignupInput = {
