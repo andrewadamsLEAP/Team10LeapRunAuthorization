@@ -17,7 +17,7 @@ const testDatabasePool = {
             employee_id: 7,
             username: 'admin_test',
             email: 'admintest@gmail.com',
-            password: process.env.TEST_PASSWORD_HASH,
+            password: process.env.TEST_ADMIN_PASSWORD_HASH,
             role: 'ADMIN',
           },
         ],
@@ -108,8 +108,8 @@ describe('AppController (e2e)', () => {
       expires_in: number;
       refresh_expires_in: number;
     };
-    expect(originalTokens.expires_in).toBe(1800);
-    expect(originalTokens.refresh_expires_in).toBe(1800);
+    expect(originalTokens.expires_in).toBe(600);
+    expect(originalTokens.refresh_expires_in).toBe(600);
 
     const duplicateLogin = await request(app.getHttpServer())
       .post('/auth/login')
