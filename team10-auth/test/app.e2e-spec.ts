@@ -10,6 +10,19 @@ let capturedSignupValues: unknown[] | undefined;
 const testDatabasePool = {
   query: async (sql: string, values?: unknown[]) => {
     if (sql.includes('SELECT 1')) return { rows: [] };
+    if (sql.includes('FROM employees')) {
+      return {
+        rows: [
+          {
+            employee_id: 7,
+            username: 'admin_test',
+            email: 'admintest@gmail.com',
+            password: process.env.TEST_PASSWORD_HASH,
+            role: 'ADMIN',
+          },
+        ],
+      };
+    }
     if (sql.includes('INSERT INTO clients')) {
       capturedSignupValues = values;
       return {
@@ -95,8 +108,8 @@ describe('AppController (e2e)', () => {
       expires_in: number;
       refresh_expires_in: number;
     };
-    expect(originalTokens.expires_in).toBe(900);
-    expect(originalTokens.refresh_expires_in).toBe(900);
+    expect(originalTokens.expires_in).toBe(1800);
+    expect(originalTokens.refresh_expires_in).toBe(1800);
 
     const duplicateLogin = await request(app.getHttpServer())
       .post('/auth/login')
@@ -110,7 +123,12 @@ describe('AppController (e2e)', () => {
       .get('/auth/me')
       .set('Authorization', `Bearer ${originalTokens.access_token}`)
       .expect(200)
-      .expect({ userId: '1', username: 'test-user' });
+      .expect({
+        userId: '1',
+        username: 'test-user',
+        actorType: 'client',
+        role: 'CLIENT',
+      });
 
     const refreshed = await request(app.getHttpServer())
       .post('/auth/refresh')
@@ -151,6 +169,23 @@ describe('AppController (e2e)', () => {
       .expect(201);
     expect(loginAfterLogout.body.access_token).toBeTruthy();
     expect(loginAfterLogout.body.refresh_token).toBeTruthy();
+  });
+
+  it('authenticates an admin employee and authorizes the admin route', async () => {
+    const loginResponse = await request(app.getHttpServer())
+      .post('/auth/employee/login')
+      .send({ username: 'admin_test', password: 'CTRLALTDELETE' })
+      .expect(201);
+
+    expect(loginResponse.body.access_token).toEqual(expect.any(String));
+    expect(loginResponse.body.refresh_token).toEqual(expect.any(String));
+    expect(loginResponse.body.token_type).toBe('Bearer');
+
+    await request(app.getHttpServer())
+      .get('/auth/employee/admin/check')
+      .set('Authorization', `Bearer ${loginResponse.body.access_token}`)
+      .expect(200)
+      .expect({ authorized: true, role: 'EMPLOYEE_ADMIN', username: 'admin_test' });
   });
 
   afterEach(async () => {
