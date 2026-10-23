@@ -148,7 +148,7 @@ export class AuthService {
     const result = await this.database.query<ClientAccount>(
       `SELECT client_id, username, email, password
        FROM clients
-       WHERE username = $1 OR email = $1
+        WHERE LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1)
        LIMIT 1`,
       [identifier],
     );
@@ -317,7 +317,7 @@ export class AuthService {
     const result = await this.database.query<EmployeeAccount>(
       `SELECT employee_id, username, email, password, role
        FROM employees
-       WHERE username = $1 OR email = $1
+        WHERE LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1)
        LIMIT 1`,
       [identifier],
     );
