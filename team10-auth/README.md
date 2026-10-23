@@ -1,5 +1,12 @@
 # Team10 Auth API
 
+## Website-help chatbot
+
+`POST /chat/message` supports Gemini-generated help grounded in reviewed FAQ
+content, with a FAQ-only mode and no user messages sent to the AI provider.
+See [chat setup and API contract](CHAT_SETUP.md) for environment variables,
+privacy boundaries, knowledge approval, limits, pricing, and local testing.
+
 The API authenticates clients from the PostgreSQL `clients` table and issues
 15-minute JWT access and refresh tokens. It permits one active session per
 account in this server process: a second login returns HTTP `409 Conflict`
