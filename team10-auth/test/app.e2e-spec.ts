@@ -6,11 +6,29 @@ import { AppModule } from './../src/app.module.js';
 import { DATABASE_POOL } from './../src/database/database.module.js';
 
 let capturedSignupValues: unknown[] | undefined;
+let capturedReporterValues: unknown[] | undefined;
+let capturedLoginQueries: string[] = [];
 
 const testDatabasePool = {
   query: async (sql: string, values?: unknown[]) => {
     if (sql.includes('SELECT 1')) return { rows: [] };
+    if (sql.includes('INSERT INTO employees')) {
+      capturedReporterValues = values;
+      return {
+        rows: [
+          {
+            employee_id: 8,
+            email: 'reporter@example.test',
+            username: 'reporter_test',
+            first_name: 'Test',
+            last_name: 'Reporter',
+            role: 'REPORTER',
+          },
+        ],
+      };
+    }
     if (sql.includes('FROM employees')) {
+      capturedLoginQueries.push(sql);
       return {
         rows: [
           {
@@ -37,6 +55,7 @@ const testDatabasePool = {
         ],
       };
     }
+    if (sql.includes('FROM clients')) capturedLoginQueries.push(sql);
     return {
       rows: [
         {
@@ -56,6 +75,8 @@ describe('AppController (e2e)', () => {
 
   beforeEach(async () => {
     capturedSignupValues = undefined;
+    capturedReporterValues = undefined;
+    capturedLoginQueries = [];
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
@@ -100,8 +121,11 @@ describe('AppController (e2e)', () => {
   it('refreshes tokens, rejects refresh replay, and revokes the session on logout', async () => {
     const loginResponse = await request(app.getHttpServer())
       .post('/auth/login')
-      .send({ username: 'test-user', password: 'test-password' })
+      .send({ username: 'TEST-USER', password: 'test-password' })
       .expect(201);
+    expect(capturedLoginQueries[0]).toContain(
+      'LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1)',
+    );
     const originalTokens = loginResponse.body as {
       access_token: string;
       refresh_token: string;
@@ -174,8 +198,11 @@ describe('AppController (e2e)', () => {
   it('authenticates an admin employee and authorizes the admin route', async () => {
     const loginResponse = await request(app.getHttpServer())
       .post('/auth/employee/login')
-      .send({ username: 'admin_test', password: 'CTRLALTDELETE' })
+      .send({ username: 'ADMIN_TEST', password: 'CTRLALTDELETE' })
       .expect(201);
+    expect(capturedLoginQueries[0]).toContain(
+      'LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1)',
+    );
 
     expect(loginResponse.body.access_token).toEqual(expect.any(String));
     expect(loginResponse.body.refresh_token).toEqual(expect.any(String));
@@ -186,6 +213,22 @@ describe('AppController (e2e)', () => {
       .set('Authorization', `Bearer ${loginResponse.body.access_token}`)
       .expect(200)
       .expect({ authorized: true, role: 'EMPLOYEE_ADMIN', username: 'admin_test' });
+
+    const reporterResponse = await request(app.getHttpServer())
+      .post('/auth/employees/reporter')
+      .set('Authorization', `Bearer ${loginResponse.body.access_token}`)
+      .send({
+        email: 'reporter@example.test',
+        username: 'reporter_test',
+        password: 'reporter-pass-123',
+        first_name: 'Test',
+        last_name: 'Reporter',
+      })
+      .expect(201);
+
+    expect(capturedReporterValues?.[2]).toMatch(/^\$2[aby]\$12\$/);
+    expect(capturedReporterValues?.[2]).not.toBe('reporter-pass-123');
+    expect(reporterResponse.body).not.toHaveProperty('password');
   });
 
   afterEach(async () => {
