@@ -49,6 +49,7 @@ describe('POST /chat/message (isolated HTTP integration)', () => {
     ['What are the password requirements?', 'account-setup'],
     ['I’m having trouble logging in', 'account-login'],
     ['How does signing in work?', 'account-login'],
+    ['What is an instrument?', 'instrument-help'],
     ['What is a balance?', 'balance-help'],
     ['My balance is 500', 'balance-help'],
     ['Sign in with me@example.test', 'account-login'],

@@ -68,4 +68,11 @@ export const SITE_HELP: readonly HelpEntry[] = [
     question: 'How can I get help from a person?',
     answer: 'Contact your site support team through the official channel provided by your organization or the site. A verified support email or URL has not been supplied to this assistant, so I cannot give a specific address. Describe the issue without sharing passwords, tokens, or financial records.',
   },
+  {
+    id: 'instrument-help',
+    approved: true,
+    terms: ['instrument', 'instruments', 'security', 'securities', 'asset', 'assets'],
+    question: 'What are instruments and how can I view them?',
+    answer: 'Instruments represent tradable assets such as stocks, bonds, or other financial products. Look for sections labeled Holdings, Portfolio, or similar in the secure site interface to view your instruments. I cannot access or verify your holdings. Contact support for discrepancies without sharing sensitive information.',
+  }
 ];
