@@ -35,6 +35,10 @@ secure random generator; do not use the example value above. Set
 `DATABASE_SSL=true` if your PostgreSQL host requires TLS. From the `team10-auth`
 directory, start the server with `npm run start:dev`.
 
+CORS accepts any origin and port, reflects requested headers, and permits
+credentialed requests. `FE_PORT` is not used to restrict origins. Restrict
+origins before production use if arbitrary websites must not access the API.
+
 The `clients.password` column must contain bcrypt hashes. If it currently
 contains plaintext passwords or another hash format, migrate/reset those
 passwords before enabling this sign-in flow; the API intentionally rejects

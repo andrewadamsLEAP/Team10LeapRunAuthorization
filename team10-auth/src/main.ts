@@ -13,12 +13,10 @@ const { AppModule } = await import('./app.module.js');
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // CORS setup that only allows Angular port.
+  // Reflect any origin and requested headers, including credentialed requests.
   app.enableCors({
-    origin: [process.env.FE_PORT],
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    // Allows auth header for bearer JWT and Content-Type (for the JSON)
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+    origin: true,
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     credentials: true,
   });
 
