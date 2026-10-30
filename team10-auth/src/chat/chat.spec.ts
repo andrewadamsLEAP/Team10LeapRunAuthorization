@@ -114,7 +114,7 @@ describe('Gemini provider privacy and failure handling', () => {
 
   beforeEach(() => {
     vi.stubEnv('CHAT_PROVIDER', 'gemini');
-    vi.stubEnv('GEMINI_API_KEY', 'test-only-placeholder');
+    vi.stubEnv('GEMINI_API', 'test-only-placeholder');
     vi.stubEnv('GEMINI_MODEL', 'gemini-2.5-flash-lite');
     fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
       candidates: [{ finishReason: 'STOP', content: { parts: [{ text: 'Use the registration form to set up your account.' }] } }],

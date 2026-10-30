@@ -9,11 +9,21 @@ services:
     environment:
       PORT: 3000
       JWT_SECRET: ${JWT_SECRET}
-
       DATABASE_HOST: ${DATABASE_HOST}
       DATABASE_PORT: ${DATABASE_PORT}
       DATABASE_USER: ${DATABASE_USER}
       DATABASE_PASSWORD: ${DATABASE_PASSWORD}
       DATABASE_NAME: ${DATABASE_NAME}
       DATABASE_SSL: "false"
+    networks:
+      - app-network
+      - database
     restart: unless-stopped
+
+networks:
+  app-network:
+    driver: bridge
+  database:
+    external: true
+    name: team10-database
+
